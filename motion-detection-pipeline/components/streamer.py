@@ -8,11 +8,12 @@ import numpy as np
 
 class Streamer:
 
-    def __init__(self, video_path: Path, output_queue, shutdown_event, num_buffers=3):
+    def __init__(self, video_path: Path, output_queue, shutdown_event, enable_fps_logging=False, num_buffers=3):
         self.video_path = video_path
         self.output_queue = output_queue
         self.num_buffers = num_buffers
         self.shutdown_event = shutdown_event
+        self.enable_fps_logging = enable_fps_logging
         self.shared_buffers = []
         self.buffer_names = []
 
@@ -47,6 +48,11 @@ class Streamer:
 
         frame_id = 0
         buffer_idx = 0
+        expected_time = time.time()
+
+        if self.enable_fps_logging:
+            frame_times = []
+            last_log_time = time.time()
 
         while True:
             if self.shutdown_event.is_set():
@@ -78,13 +84,30 @@ class Streamer:
 
             buffer_idx = (buffer_idx + 1) % self.num_buffers
             frame_id += 1
-
-            elapsed = time.time() - start_time
-            sleep_time = frame_delay - elapsed 
-            if sleep_time > 0 :
+            
+            expected_time += frame_delay
+            sleep_time = expected_time - time.time()
+            
+            if sleep_time > 0:
                 time.sleep(sleep_time)
 
+            if self.enable_fps_logging:
+                actual_frame_time = time.time() - start_time
+                frame_times.append(actual_frame_time)
+
+                if time.time() - last_log_time >= 1.0:
+                    recent_times = frame_times[-int(fps):]
+                    avg_time = sum(recent_times) / len(recent_times)
+                    current_fps = 1.0 / avg_time if avg_time > 0 else 0
+                    print(f"Streamer: Current FPS: {current_fps:.1f} (target: {fps:.1f})")
+                    last_log_time = time.time()
+
         self.output_queue.put({'stop': True})
+        
+        if self.enable_fps_logging and frame_times:
+            avg_frame_time = sum(frame_times) / len(frame_times)
+            actual_fps = 1.0 / avg_frame_time
+            print(f"Streamer: Average FPS: {actual_fps:.2f} (target: {fps:.2f})")
 
         cap.release()
         self._cleanup()
@@ -104,6 +127,8 @@ class Streamer:
             shm.unlink()
 
 
-def streamer_process(video_path: Path, output_queue, shutdown_event):
-    streamer = Streamer(video_path, output_queue, shutdown_event)
+def streamer_process(
+    video_path: Path, output_queue, shutdown_event, enable_fps_logging=False
+):
+    streamer = Streamer(video_path, output_queue, shutdown_event, enable_fps_logging)
     streamer.run()
