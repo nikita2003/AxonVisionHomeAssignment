@@ -6,26 +6,34 @@ import numpy as np
 
 
 class Detector:
-    def __init__(self, input_queue, output_queue, num_buffers=3):
+    def __init__(self, input_queue, output_queue,shutdown_event, num_buffers=3):
         self.input_queue = input_queue
         self.output_queue = output_queue
+        self.shutdown_event = shutdown_event
         self.num_buffers = num_buffers
         self.prev_frame = None
         self.output_buffers = []
         self.output_buffer_names = []
 
     def run(self):
-        """Main detector process loop"""
         print("Detector Started")
 
         buffer_idx = 0
         frame_count = 0
 
         while True:
-            metadata = self.input_queue.get()
+            if self.shutdown_event.is_set():
+                print("Detector: Shutdown event detected")
+                break
+
+            try:
+                metadata = self.input_queue.get(timeout=0.5)
+            except:
+                continue 
 
             if metadata.get("stop", False):
                 print("Detector: Received stop signal")
+                self.shutdown_event.set()
                 break
 
             frame_id = metadata["frame_id"]
@@ -117,6 +125,6 @@ class Detector:
             shm.unlink()
 
 
-def detector_process(input_queue, output_queue):
-    detector = Detector(input_queue, output_queue)
+def detector_process(input_queue, output_queue, shutdown_event):
+    detector = Detector(input_queue, output_queue, shutdown_event)
     detector.run()

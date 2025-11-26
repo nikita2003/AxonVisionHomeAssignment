@@ -21,26 +21,42 @@ def main():
     streamer_to_detector = mp.Queue(maxsize=10)
     detector_to_visualizer = mp.Queue(maxsize=10)
 
-    streamer = mp.Process(target=streamer_process, args=(video_path, streamer_to_detector))
-    detector = mp.Process(target=detector_process, args=(streamer_to_detector, detector_to_visualizer))
-    visualizer = mp.Process(target=visualizer_process, args=(detector_to_visualizer,))
+    shutdown_event = mp.Event()
+
+    streamer = mp.Process(target=streamer_process, args=(video_path, streamer_to_detector, shutdown_event))
+    detector = mp.Process(target=detector_process, args=(streamer_to_detector, detector_to_visualizer, shutdown_event))
+    visualizer = mp.Process(target=visualizer_process, args=(detector_to_visualizer,shutdown_event))
 
     streamer.start()
     detector.start()
     visualizer.start()
 
     print("\nMain: All processes started")
+    try:
+        streamer.join()
+        print("Main: Streamer finished")
 
-    streamer.join()
-    print("Main: Streamer finished")
+        detector.join()
+        print("Main: Detector finished")
 
-    detector.join()
-    print("Main: Detector finished")
+        visualizer.join()
+        print("Main: Visualizer finished")
 
-    visualizer.join()
-    print("Main: Visualizer finished")
+        print("\nPipeline Complete ")
+    except KeyboardInterrupt:
+        print("\nMain: Keyboard interrupt received, shutting down...")
+        shutdown_event.set()
 
-    print("\nPipeline Complete ")
+        streamer.join(timeout=2)
+        detector.join(timeout=2)
+        visualizer.join(timeout=2)
+
+        if streamer.is_alive():
+            streamer.terminate()
+        if detector.is_alive():
+            detector.terminate()
+        if visualizer.is_alive():
+            visualizer.terminate()
 
 if __name__ == "__main__":
     main()

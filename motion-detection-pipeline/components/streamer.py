@@ -7,11 +7,12 @@ import numpy as np
 
 
 class Streamer:
-    def __init__(self, video_path: Path, output_queue, num_buffers=3):
+
+    def __init__(self, video_path: Path, output_queue, shutdown_event, num_buffers=3):
         self.video_path = video_path
         self.output_queue = output_queue
         self.num_buffers = num_buffers
-
+        self.shutdown_event = shutdown_event
         self.shared_buffers = []
         self.buffer_names = []
 
@@ -21,6 +22,7 @@ class Streamer:
         if not cap.isOpened():
             print(f"Error: could not open video file: {self.video_path}")
             self.output_queue.put({'stop': True})
+            self.shutdown_event.set()
             return
 
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -47,11 +49,16 @@ class Streamer:
         buffer_idx = 0
 
         while True:
+            if self.shutdown_event.is_set():
+                print("Streamer: Shutdown event detected")
+                break
+
             start_time = time.time()
 
             ret, frame = cap.read()
             if not ret:
                 print("Streamer reached end of video")
+                self.shutdown_event.set()
                 break
 
             shm = self.shared_buffers[buffer_idx]
@@ -90,14 +97,13 @@ class Streamer:
             self.shared_buffers.append(shm)
             self.buffer_names.append(buffer_name)
             print(f"Streamer: Created buffer {i}: {buffer_name}")
-            
+
     def _cleanup(self):
         for shm in self.shared_buffers:
             shm.close()
             shm.unlink()
 
 
-
-def streamer_process(video_path: Path, output_queue):
-    streamer = Streamer(video_path, output_queue)
+def streamer_process(video_path: Path, output_queue, shutdown_event):
+    streamer = Streamer(video_path, output_queue, shutdown_event)
     streamer.run()
