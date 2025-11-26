@@ -73,7 +73,7 @@ class Detector:
         self.output_queue.put({"stop": True})
 
         self._cleanup()
-        print(f"Detector: Finished processing {frame_count+1} frames")
+        print(f"Detector: Finished processing {frame_count} frames")
 
     def _detect_motion(self, gray_frame):
         diff = cv2.absdiff(gray_frame, self.prev_frame)

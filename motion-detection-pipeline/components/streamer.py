@@ -81,7 +81,7 @@ class Streamer:
 
         cap.release()
         self._cleanup()
-        print(f"Streamer finished streaming {frame_id + 1} frames")
+        print(f"Streamer finished streaming {frame_id} frames")
 
     def _create_shared_buffers(self, frame_size):
         for i in range(self.num_buffers):

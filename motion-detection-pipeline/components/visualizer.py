@@ -42,7 +42,7 @@ class Visualizer:
             frame_count += 1
 
         cv2.destroyAllWindows()
-        print(f"Visualizer: Finished displaying {frame_count+1} frames")
+        print(f"Visualizer: Finished displaying {frame_count} frames")
 
     def _annotate_frame(self, frame: np.array, detections, motion_detected):
         curr_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
