@@ -62,6 +62,8 @@ class Detector:
             shm_output = self.output_buffers[buffer_idx]
             output_array = np.ndarray(shape, dtype=np.uint8, buffer=shm_output.buf)
             output_array[:] = frame[:]
+            
+            shm_input.close()
 
             output_metadata = {
                 "frame_id": frame_id,
