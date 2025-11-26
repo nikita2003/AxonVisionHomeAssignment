@@ -45,17 +45,42 @@ class Visualizer:
         print(f"Visualizer: Finished displaying {frame_count} frames")
 
     def _annotate_frame(self, frame: np.array, detections, motion_detected):
-        curr_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cv2.putText(frame, curr_time, (10,25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
-
         for contour_list in detections:
             contour_array = np.array(contour_list, dtype=np.int32)
-            cv2.drawContours(frame, [contour_array], -1, (0, 255, 0), 2)
 
-        
+            x,y,w,h = cv2.boundingRect(contour_array)
+            
+            x = max(0, x)
+            y = max(0, y)
+            w = min(w, frame.shape[1] - x)
+            h = min(h, frame.shape[0] - y)
+            
+            if w<= 0 or h <= 0:
+                continue
+            
+            roi = frame[y:y+h, x:x+w]
+            
+            blurred_roi = cv2.GaussianBlur(roi, (21,21), 0)
+            
+            frame[y:y+h, x:x+w] = blurred_roi
+            
+            cv2.drawContours(frame, [contour_array], -1, (0, 255, 0), 2)
+            
+
+        curr_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cv2.putText(
+            frame,
+            curr_time,
+            (10, 25),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 255),
+            2,
+        )
+
         return frame
-    
-    
+
+
 def visualizer_process(input_queue):
     visualizer = Visualizer(input_queue)
     visualizer.run()
