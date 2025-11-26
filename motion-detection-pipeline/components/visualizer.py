@@ -7,9 +7,10 @@ import numpy as np
 
 class Visualizer:
 
-    def __init__(self, input_queue, shutdown_event):
+    def __init__(self, input_queue, shutdown_event, use_bounding_boxes = False):
         self.input_queue = input_queue
         self.shutdown_event = shutdown_event
+        self.use_bounding_boxes = use_bounding_boxes
 
     def run(self):
         print("Visualizer: Started")
@@ -75,7 +76,10 @@ class Visualizer:
 
             frame[y:y+h, x:x+w] = blurred_roi
 
-            cv2.drawContours(frame, [contour_array], -1, (0, 255, 0), 2)
+            if self.use_bounding_boxes:
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            else:
+                cv2.drawContours(frame, [contour_array], -1, (0, 255, 0), 2)
 
         curr_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cv2.putText(
@@ -91,6 +95,6 @@ class Visualizer:
         return frame
 
 
-def visualizer_process(input_queue, shutdown_event):
-    visualizer = Visualizer(input_queue, shutdown_event)
+def visualizer_process(input_queue, shutdown_event, use_bounding_boxes = False):
+    visualizer = Visualizer(input_queue, shutdown_event, use_bounding_boxes)
     visualizer.run()
